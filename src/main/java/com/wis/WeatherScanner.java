@@ -5,6 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Scanner;
 import java.util.Map;
 import java.util.List;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.IOException;
@@ -40,6 +44,7 @@ public class WeatherScanner {
     }
 
     // TODO: Add API Request By Zip Code Function
+    @SuppressWarnings("deprecation")
     public String callAPIGeo(String location, String key) {
         String request;
         String inputLine;
@@ -56,6 +61,7 @@ public class WeatherScanner {
                 + "?q=%s,%s,%s&limit=1&appid=%s",
                 city, state, country, key);
 
+            
             url = new URL(request);
             System.out.println("Calling API At: " + url.toString());
 
@@ -94,7 +100,7 @@ public class WeatherScanner {
 
     }
 
-
+    @SuppressWarnings("deprecation")
     public String callAPIWeather(String lat, String lon, String key) {
         String request;
         String inputLine;
@@ -209,11 +215,16 @@ public class WeatherScanner {
         }
 
         Map<String, Object> data = deserializedJsonWeather;
+        String time = this.convertUnixUTC(Integer.parseInt(data.get("dt").toString()));
         System.out.println(
             "\nWeather: " + data.get("weather") +
-            "\nTemperatures: " + data.get("main") +
+            "\nTemperature: " + data.get("main") +
             "\nVisibility: " + data.get("visibility") +
             "\nWind: " + data.get("wind") +
+            "\nClouds: " + data.get("clouds") +
+            "\nRain: " + data.get("rain") +
+            "\nSnow: " + data.get("snow") +
+            "\nTime of Calculation: " + time +
             "\nSunset/Sunrise: " + data.get("sys") +
             "\n"
         );
@@ -221,6 +232,19 @@ public class WeatherScanner {
         deserializedJsonWeather.get("weather");
 
         System.out.print("\n\n");
+
+    }
+
+
+    public String convertUnixUTC(long unixTime) {
+        Instant instFromSec = Instant.ofEpochSecond(unixTime);
+        ZonedDateTime zonedDateTimeFromSec =
+             instFromSec.atZone(ZoneId.of("UTC"));
+        
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss 'UTC'");
+        String formattedTime = zonedDateTimeFromSec.format(formatter);
+        
+        return formattedTime;
 
     }
 
@@ -338,7 +362,7 @@ public class WeatherScanner {
         location = String.format("%s %s %s", city, state, country);
     }
 
-
+    // TODO: Polish Interactive Menu
     public static void tui() {
         Scanner scnr = new Scanner(System.in);
         String answer;
