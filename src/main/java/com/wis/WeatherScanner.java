@@ -4,10 +4,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Scanner;
 import java.util.Map;
 import java.util.HashMap;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
 
 
 public class WeatherScanner {
@@ -18,7 +24,7 @@ public class WeatherScanner {
     private static String state;
     private static String country;
     private static String apiKey;
-    private static Map<String, String> apiResponse = new HashMap<>();
+    private static Map<String, Object> apiResponse = new HashMap<>();
 
     WeatherScanner() {
         apiKey = "Undefined";
@@ -32,16 +38,77 @@ public class WeatherScanner {
 
     // TODO: Pull API Request Into apiResponse HashMap
     // TODO: Pull API Request By Zip Code
-    public Map<String, String> callAPI(String location, String key) {
+    public String callAPI(String location, String key) {
         String request;
-        
-        this.decodeLocation(location);
-        request = String.format("http://api.openweathermap.org" 
-            + "/geo/1.0/direct?q=%s,%s,%s&limit=1&appid=%s",
-             city, state, country, key);
-        
-        
+        String inputLine;
+        StringBuilder response = new StringBuilder();
+        int responseCode;
+        URI uri;
+        URL url;
+        HttpURLConnection con;
+
+        try {
+
+            this.decodeLocation(location);
+
+            request = String.format("http://api.openweathermap.org" 
+                + "/geo/1.0/direct?q=%s,%s,%s&limit=1&appid=%s",
+                city, state, country, key);
+
+            uri = new URI(request);
+            url = uri.toURL();
+            System.out.println("Calling API At: " + url.toString());
+
+            con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("GET");
+            responseCode = con.getResponseCode();
+            System.out.println("Response Code: " + responseCode);
+
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
+                
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+                in.close();
+
+                System.out.println("API Response:\n"
+                    + response.toString());
+
+            } else {
+                System.err.println("API Call Failed!");
+            }
+
+            con.disconnect();
+
+        } catch (MalformedURLException e) {
+            System.err.println("Malformed URL Exception: " + e.getMessage());
+            e.printStackTrace();
+        } catch (Exception e) {
+            System.err.println("An Unexpected Error Occurred: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return response.toString();
+
+    }
+
+
+    public Map<String, Object> jsonToMap(String jsonResponse) {
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        try {
+            apiResponse = objectMapper.readValue(jsonResponse, apiResponse.getClass());
+
+            System.out.println("Key : Value Pairs:" + apiResponse.size());
+
+        } catch (Exception e) {
+            System.err.println("Error Occurred: " + e.getMessage());
+            e.printStackTrace();
+        }
+
         return apiResponse;
+
     }
     
 
@@ -96,9 +163,10 @@ public class WeatherScanner {
             Scanner scnr_in = new Scanner(fileContent);
             city = scnr_in.next();
             state = scnr_in.next();
-            country = scnr_in.next();
-            System.out.printf("Local Location Set As: \nCity: %s\nState/Province: %s\nCountry: %s\n",
-                 city, state, country);
+            country = scnr_in.nextLine();
+            System.out.printf("Local Location Set As:"
+                + "\nCity: %s\nState/Province: %s\nCountry Code: %s\n",
+                city, state, country);
             scnr_in.close();
         } catch (IOException e) {
             System.err.println("Error reading file: " + e.getMessage());
@@ -194,7 +262,7 @@ public class WeatherScanner {
                 if (state.length() == 1) {
                     ch = state.toUpperCase().charAt(0);
                 }
-                System.out.print("Country: ");
+                System.out.print("Country Code: ");
                 country = scnr.nextLine();
                 if (country.length() == 1) {
                     ch = country.toUpperCase().charAt(0);
@@ -241,17 +309,17 @@ public class WeatherScanner {
                         case 'L':
                             System.out.println("Enter The Location That Launches On Startup:");
                             System.out.print("City: ");
-                            city = scnr.next().trim();
+                            city = scnr.nextLine().trim();
                             if (city.length() == 1 && city.toUpperCase().charAt(0) == 'Q') {
                                 break;
                             }
                             System.out.print("State: ");
-                            state = scnr.next().trim();
+                            state = scnr.nextLine().trim();
                             if (state.length() == 1 && state.toUpperCase().charAt(0) == 'Q') {
                                 break;
                             }
-                            System.out.print("Country: ");
-                            country = scnr.next().trim();
+                            System.out.print("Country Code: ");
+                            country = scnr.nextLine().trim();
                             if (country.length() == 1 && country.toUpperCase().charAt(0) == 'Q') {
                                 break;
                             }
@@ -272,6 +340,20 @@ public class WeatherScanner {
 
                 case 'X':
                     // TODO: Add Interactive Menu to Make Requests to OpenWeather
+                    System.out.print("Enter A Location To Survey:\nCity: ");
+                    city = scnr.next().trim();
+                    System.out.print("\nState/Province: ");
+                    state = scnr.next().trim();
+                    System.out.print("\nCountry Code: ");
+                    scnr.nextLine();
+                    country = scnr.nextLine().toString();
+                    
+                    weatherScanner.setLocation(city, state, country);
+                    String res = weatherScanner.callAPI(location, apiKey);
+                    apiResponse = weatherScanner.jsonToMap(res);
+                    
+                    System.out.printf("\n\nWeather In %s:\n\n", city);
+                    System.out.println(apiResponse);
 
                     break;
                 
