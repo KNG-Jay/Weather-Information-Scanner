@@ -24,33 +24,41 @@ public class WeatherScanner {
         locationDefault = "Undefined";
     }
 
-    WeatherScanner(String key, String loc) {
+    WeatherScanner(String key, String dLocation) {
         apiKey = key;
-        locationDefault = location;
+        locationDefault = dLocation;
     }
 
-
-    public String[] callAPI(String location, String key) {
+    // TODO: Pull API Request Into apiResponse HashMap
+    public Map<String, String> callAPI(String location, String key) {
         this.decodeLocation(location);
         
-
+        return apiResponse;
     }
+    
+
+    // TODO: Display Information In A Pleasing Manner
 
 
     public void decodeLocation(String location) {
         Scanner scnr = new Scanner(location);
+
         city = scnr.next();
         state = scnr.next();
         country = scnr.next();
+
         scnr.close();
     }
 
 
     public static String[] getInfo() {
         String[] info = new String[2];
+
         info[0] = getAPIKey();
         info[1] = getDefaultLocation();
+
         return info;
+
     }
 
 
@@ -95,7 +103,14 @@ public class WeatherScanner {
 
 
     public String getLocation() {
-        return location;
+        System.out.println("Location Currently in Buffer:");
+
+        if (location != null || location.isBlank()) {
+            return null;
+        } else {
+            return location;
+        }
+
     }
 
 
@@ -117,7 +132,7 @@ public class WeatherScanner {
 
     private static void setDefaultLocation(String city, String state, String country) {
         Path filepath = Paths.get("src/main/java/resources/location-default.txt");
-        location = filepath.toString();
+        location = String.format("%s %s %s", city, state, country);
 
         try {
             Files.write(filepath, location.getBytes());
@@ -141,19 +156,14 @@ public class WeatherScanner {
     public static void tui() {
         Scanner scnr = new Scanner(System.in);
         String answer;
-        char ch = ' ';
-        WeatherScanner weatherScanner = new WeatherScanner(getInfo()[0], getInfo()[1]);
-        /*TODO: Have user use saved key/location
-         or input api-key/ location and save to: 
-         ../resources/api-key.txt
-         ../resources/location-default.txt
-        */
-        while (ch != 'Q') {
+        Character ch = ' ';
+        WeatherScanner weatherScanner = new WeatherScanner(getAPIKey(), getDefaultLocation());
 
-            System.out.println("----------  Weather Scanner System  ----------");
-            System.out.println("A Tool That Allows You To Check Local/Distant Weather Data!");
-            System.out.println("ENTER 'q' TO QUIT!\n");
-            getInfo();
+        System.out.println("\n----------  Weather Scanner System  ----------");
+        System.out.println("\nA Tool That Allows You To Check Local/Distant Weather Data!\n");
+        System.out.println("ENTER 'q' TO QUIT!\n\n");
+
+        while (ch != 'Q') {
             
             if (WeatherScanner.apiKey == null || WeatherScanner.apiKey == "Undefined") {
                 System.out.println("Please Enter an API Key From openweathermap.org:");
@@ -173,20 +183,97 @@ public class WeatherScanner {
                 }
                 System.out.print("State/Province: ");
                 state = scnr.nextLine();
+                if (state.length() == 1) {
+                    ch = state.toUpperCase().charAt(0);
+                }
                 System.out.print("Country: ");
                 country = scnr.nextLine();
+                if (country.length() == 1) {
+                    ch = country.toUpperCase().charAt(0);
+                }
                 setDefaultLocation(city, state, country);
             }
 
-            apiKey = getAPIKey();
-            locationDefault = getDefaultLocation();
+            System.out.println("------------  MENU  ------------");
+            System.out.println("OPTIONS:"
+                + "\nl - List Instance Info"
+                + "\ne - Edit Instance Info"
+                + "\nx - Enter Query Menu "
+                + "\nq - QUIT"
+                + "\n"
+                );
+            ch = scnr.next().toUpperCase().charAt(0);
 
-            switch (ch) {
-                case 'l':
-                    getInfo();
+            switch (Character.toUpperCase(ch)) {
+
+                case 'L':
+                    System.out.printf("\n%s\n%s",getAPIKey(), getDefaultLocation());
                     break;
-            
+
+                case 'E':
+                    System.out.println("\n<-EDITOR->\n");
+                    System.out.println("Options:"
+                        + "\nk - Edit API Key"
+                        + "\nl - Edit Default Location"
+                        + "\nq - QUIT\n"
+                        );
+                    ch = scnr.next().toUpperCase().charAt(0);
+                    
+                    switch (ch) {
+
+                        case 'K':
+                            System.out.println("Enter Your Key From OpenWeather's API");
+                            answer = scnr.next().trim();
+                            if (answer.length() == 1 && answer.toUpperCase().charAt(0) == 'Q') {
+                                break;
+                            }
+                            setAPIKey(answer);
+                            break;
+
+                        case 'L':
+                            System.out.println("Enter The Location That Launches On Startup:");
+                            System.out.print("City: ");
+                            city = scnr.next().trim();
+                            if (city.length() == 1 && city.toUpperCase().charAt(0) == 'Q') {
+                                break;
+                            }
+                            System.out.print("State: ");
+                            state = scnr.next().trim();
+                            if (state.length() == 1 && state.toUpperCase().charAt(0) == 'Q') {
+                                break;
+                            }
+                            System.out.print("Country: ");
+                            country = scnr.next().trim();
+                            if (country.length() == 1 && country.toUpperCase().charAt(0) == 'Q') {
+                                break;
+                            }
+                            setDefaultLocation(city, state, country);
+                            break;
+
+                        case 'Q':
+                            System.out.println("Exiting Editor...");
+                            ch = ' ';
+                            break;
+
+                        default:
+                            System.err.println("***Failed To Find Command... Please Try Again.");
+                            break;
+                            
+                    }
+                    break;
+
+                case 'X':
+                    // TODO: Add Interactive Menu to Make Requests to OpenWeather
+
+                    break;
+                
+                case 'Q':
+                    System.out.println("\nGoodbye! :)\n");
+                    System.exit(1);
+                    break;
+                
                 default:
+                    System.err.println("***Failed To Find Command... Please Try Again.");
                     break;
 
             }
