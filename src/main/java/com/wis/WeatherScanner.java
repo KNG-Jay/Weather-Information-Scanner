@@ -1,5 +1,6 @@
-package main.java.com.wis;
+package com.wis;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Scanner;
 import java.util.Map;
 import java.util.HashMap;
@@ -30,8 +31,15 @@ public class WeatherScanner {
     }
 
     // TODO: Pull API Request Into apiResponse HashMap
+    // TODO: Pull API Request By Zip Code
     public Map<String, String> callAPI(String location, String key) {
+        String request;
+        
         this.decodeLocation(location);
+        request = String.format("http://api.openweathermap.org" 
+            + "/geo/1.0/direct?q=%s,%s,%s&limit=1&appid=%s",
+             city, state, country, key);
+        
         
         return apiResponse;
     }
@@ -218,7 +226,7 @@ public class WeatherScanner {
                         + "\nq - QUIT\n"
                         );
                     ch = scnr.next().toUpperCase().charAt(0);
-                    
+
                     switch (ch) {
 
                         case 'K':
