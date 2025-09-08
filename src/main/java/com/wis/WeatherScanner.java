@@ -1,9 +1,10 @@
 package com.wis;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Scanner;
 import java.util.Map;
-import java.util.HashMap;
+import java.util.List;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.IOException;
@@ -12,7 +13,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
 
 
@@ -24,7 +24,7 @@ public class WeatherScanner {
     private static String state;
     private static String country;
     private static String apiKey;
-    private static Map<String, Object> apiResponse = new HashMap<>();
+    private static List<Map<String, Object>> apiResponse;
 
     WeatherScanner() {
         apiKey = "Undefined";
@@ -36,14 +36,12 @@ public class WeatherScanner {
         locationDefault = dLocation;
     }
 
-    // TODO: Pull API Request Into apiResponse HashMap
     // TODO: Pull API Request By Zip Code
     public String callAPI(String location, String key) {
         String request;
         String inputLine;
         StringBuilder response = new StringBuilder();
         int responseCode;
-        URI uri;
         URL url;
         HttpURLConnection con;
 
@@ -51,12 +49,11 @@ public class WeatherScanner {
 
             this.decodeLocation(location);
 
-            request = String.format("http://api.openweathermap.org" 
-                + "/geo/1.0/direct?q=%s,%s,%s&limit=1&appid=%s",
+            request = String.format("http://api.openweathermap.org/geo/1.0/direct"
+                + "?q=%s,%s,%s&limit=1&appid=%s",
                 city, state, country, key);
 
-            uri = new URI(request);
-            url = uri.toURL();
+            url = new URL(request);
             System.out.println("Calling API At: " + url.toString());
 
             con = (HttpURLConnection) url.openConnection();
@@ -94,25 +91,31 @@ public class WeatherScanner {
     }
 
 
-    public Map<String, Object> jsonToMap(String jsonResponse) {
+    public List<Map<String, Object>> jsonDeserial(String jsonResponse) {
         ObjectMapper objectMapper = new ObjectMapper();
+        List<Map<String, Object>> objects;
 
         try {
-            apiResponse = objectMapper.readValue(jsonResponse, apiResponse.getClass());
+            objects = objectMapper.readValue(jsonResponse, 
+                new TypeReference<List<Map<String, Object>>>(){                
+                });
 
-            System.out.println("Key : Value Pairs:" + apiResponse.size());
+            return objects;
 
         } catch (Exception e) {
             System.err.println("Error Occurred: " + e.getMessage());
             e.printStackTrace();
         }
 
-        return apiResponse;
+        return null;
 
     }
     
 
     // TODO: Display Information In A Pleasing Manner
+    public void parseData(List<Map<String, Object>> deserializedJson) {
+
+    }
 
 
     public void decodeLocation(String location) {
@@ -349,11 +352,11 @@ public class WeatherScanner {
                     country = scnr.nextLine().toString();
                     
                     weatherScanner.setLocation(city, state, country);
-                    String res = weatherScanner.callAPI(location, apiKey);
-                    apiResponse = weatherScanner.jsonToMap(res);
+                    apiResponse = weatherScanner.jsonDeserial(
+                        weatherScanner.callAPI(location, apiKey));
                     
-                    System.out.printf("\n\nWeather In %s:\n\n", city);
-                    System.out.println(apiResponse);
+                    System.out.printf("\n\nWeather In %s:\n", city);
+                    weatherScanner.parseData(apiResponse);
 
                     break;
                 
