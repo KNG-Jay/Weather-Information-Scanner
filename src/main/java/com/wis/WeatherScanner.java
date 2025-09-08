@@ -20,11 +20,14 @@ public class WeatherScanner {
 
     private static String locationDefault;
     private static String location;
+    private static String lat;
+    private static String lon;
     private static String city;
     private static String state;
     private static String country;
     private static String apiKey;
-    private static List<Map<String, Object>> apiResponse;
+    private static List<Map<String, Object>> apiResponseGeo;
+    private static Map<String, Object> apiResponseweather;
 
     WeatherScanner() {
         apiKey = "Undefined";
@@ -36,8 +39,8 @@ public class WeatherScanner {
         locationDefault = dLocation;
     }
 
-    // TODO: Pull API Request By Zip Code
-    public String callAPI(String location, String key) {
+    // TODO: Add API Request By Zip Code Function
+    public String callAPIGeo(String location, String key) {
         String request;
         String inputLine;
         StringBuilder response = new StringBuilder();
@@ -71,6 +74,7 @@ public class WeatherScanner {
 
                 System.out.println("API Response:\n"
                     + response.toString());
+                System.out.println();
 
             } else {
                 System.err.println("API Call Failed!");
@@ -91,7 +95,60 @@ public class WeatherScanner {
     }
 
 
-    public List<Map<String, Object>> jsonDeserial(String jsonResponse) {
+    public String callAPIWeather(String lat, String lon, String key) {
+        String request;
+        String inputLine;
+        StringBuilder response = new StringBuilder();
+        int responseCode;
+        URL url;
+        HttpURLConnection con;
+
+        try {
+
+            request = String.format("http://api.openweathermap.org/data/2.5/weather"
+                + "?lat=%s&lon=%s&appid=%s&units=imperial&lang=en",
+                lat, lon, key.trim());
+
+            url = new URL(request);
+            System.out.println("Calling API At: " + url.toString());
+
+            con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("GET");
+            responseCode = con.getResponseCode();
+            System.out.println("Response Code: " + responseCode);
+
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
+                
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+                in.close();
+
+                System.out.println("API Response:\n"
+                    + response.toString());
+                System.out.println();
+
+            } else {
+                System.err.println("API Call Failed!");
+            }
+
+            con.disconnect();
+
+        } catch (MalformedURLException e) {
+            System.err.println("Malformed URL Exception: " + e.getMessage());
+            e.printStackTrace();
+        } catch (Exception e) {
+            System.err.println("An Unexpected Error Occurred: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return response.toString();
+
+    }
+
+
+    public List<Map<String, Object>> jsonDeserialGeo(String jsonResponse) {
         ObjectMapper objectMapper = new ObjectMapper();
         List<Map<String, Object>> objects;
 
@@ -99,6 +156,10 @@ public class WeatherScanner {
             objects = objectMapper.readValue(jsonResponse, 
                 new TypeReference<List<Map<String, Object>>>(){                
                 });
+            for (Map<String, Object> map : objects) {
+                lat = map.get("lat").toString();
+                lon = map.get("lon").toString();
+            }
 
             return objects;
 
@@ -110,10 +171,56 @@ public class WeatherScanner {
         return null;
 
     }
+
+
+    public Map<String, Object> jsonDeserialWeather(String jsonResponse) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> objects;
+
+        try {
+            objects = objectMapper.readValue(jsonResponse, 
+                new TypeReference<Map<String, Object>>(){                
+                });
+
+            return objects;
+
+        } catch (Exception e) {
+            System.err.println("Error Occurred: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return null;
+    }
     
 
     // TODO: Display Information In A Pleasing Manner
-    public void parseData(List<Map<String, Object>> deserializedJson) {
+    public void parseData(List<Map<String, Object>> deserializedJsonGeo,
+                            Map<String, Object> deserializedJsonWeather) {
+        
+        for (Map<String, Object> map : deserializedJsonGeo) {
+            System.out.println(
+                "Name: " + map.get("name") +
+                "\nState/Province: " + map.get("state") +
+                "\nCountry: " + map.get("country") +
+                "\nLAT: " + map.get("lat") +
+                "\nLON: " + map.get("lon") +
+                "\n"
+            );
+        }
+
+        Map<String, Object> data = deserializedJsonWeather;
+        System.out.println(
+            "\nWeather: " + data.get("weather") +
+            "\nTemperatures: " + data.get("main") +
+            "\nVisibility: " + data.get("visibility") +
+            "\nWind: " + data.get("wind") +
+            "\nSunset/Sunrise: " + data.get("sys") +
+            "\n"
+        );
+
+        deserializedJsonWeather.get("weather");
+
+        System.out.print("\n\n");
 
     }
 
@@ -342,6 +449,7 @@ public class WeatherScanner {
                     break;
 
                 case 'X':
+                    // TODO: Query Default Location on Startup
                     // TODO: Add Interactive Menu to Make Requests to OpenWeather
                     System.out.print("Enter A Location To Survey:\nCity: ");
                     city = scnr.next().trim();
@@ -352,11 +460,20 @@ public class WeatherScanner {
                     country = scnr.nextLine().toString();
                     
                     weatherScanner.setLocation(city, state, country);
-                    apiResponse = weatherScanner.jsonDeserial(
-                        weatherScanner.callAPI(location, apiKey));
+                    apiResponseGeo = weatherScanner.jsonDeserialGeo(
+                        weatherScanner.callAPIGeo(location, apiKey)
+                        );
                     
+                    apiResponseweather = weatherScanner.jsonDeserialWeather(
+                        weatherScanner.callAPIWeather(lat, lon, apiKey)
+                        );
+
                     System.out.printf("\n\nWeather In %s:\n", city);
-                    weatherScanner.parseData(apiResponse);
+
+                    weatherScanner.parseData(
+                        apiResponseGeo,
+                        apiResponseweather
+                        );
 
                     break;
                 
