@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.List;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.io.BufferedReader;
@@ -199,7 +200,7 @@ public class WeatherScanner {
     }
     
 
-    // TODO: Display Information In A Pleasing Manner
+    @SuppressWarnings("unchecked")
     public void parseData(List<Map<String, Object>> deserializedJsonGeo,
                             Map<String, Object> deserializedJsonWeather) {
         
@@ -215,37 +216,62 @@ public class WeatherScanner {
         }
 
         Map<String, Object> data = deserializedJsonWeather;
-        String time = this.convertUnixUTC(Integer.parseInt(data.get("dt").toString()));
-        System.out.println(
-            "\nWeather: " + data.get("weather") +
-            "\nTemperature: " + data.get("main") +
-            "\nVisibility: " + data.get("visibility") +
-            "\nWind: " + data.get("wind") +
-            "\nClouds: " + data.get("clouds") +
-            "\nRain: " + data.get("rain") +
-            "\nSnow: " + data.get("snow") +
-            "\nTime of Calculation: " + time +
-            "\nSunset/Sunrise: " + data.get("sys") +
-            "\n"
-        );
+        List<Map<String, Object>> weatherData = (List<Map<String, Object>>) data.get("weather");
+        Map<String, Object> tempData = (Map<String, Object>) data.get("main");
+        Map<String, Object> windData = (Map<String, Object>) data.get("wind");
+        Map<String, Object> cloudsData = (Map<String, Object>) data.get("clouds");
+        Map<String, Object> sysData = (Map<String, Object>) data.get("sys");
+        String time = this.convertUnixFull(Integer.parseInt(data.get("dt").toString()));
 
-        deserializedJsonWeather.get("weather");
+        System.out.printf("\nWeather: %s\n", weatherData.get(0).get("description"));
+        System.out.printf("\nTemperature(F):\n");
+        for (Map.Entry<String, Object> entry : tempData.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue().toString();
+            System.out.printf("\t%s:   %s\n", key, value);
 
+        }
+        System.out.printf("\nVisibility: %s\n", data.get("visibility"));
+        System.out.printf("\nWind:\n");
+        for (Map.Entry<String, Object> entry : windData.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue().toString();
+            System.out.printf("\t%s:  %s\n", key, value);
+
+        }
+        System.out.printf("\nClouds: %s\n", cloudsData.get("all"));
+        System.out.printf("\nRain: %s\n", data.get("rain"));
+        System.out.printf("\nSnow: %s\n", data.get("snow"));
+        System.out.printf("\nTime of Calculation: %s\n", time);
+        System.out.printf("\nSunrise / Sunset:\n\t%s UTC\n\t%s UTC\n",
+                            this.convertUnixShort((Integer) sysData.get("sunrise")),
+                            this.convertUnixShort((Integer) sysData.get("sunset"))
+                        );
         System.out.print("\n\n");
 
     }
 
-
-    public String convertUnixUTC(long unixTime) {
+    // TODO: Convert to MST
+    public String convertUnixFull(long unixTime) {
         Instant instFromSec = Instant.ofEpochSecond(unixTime);
         ZonedDateTime zonedDateTimeFromSec =
              instFromSec.atZone(ZoneId.of("UTC"));
         
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss 'UTC'");
+        DateTimeFormatter formatter = DateTimeFormatter
+        .ofPattern("yyyy-MM-dd HH:mm:ss 'UTC'");
         String formattedTime = zonedDateTimeFromSec.format(formatter);
         
         return formattedTime;
 
+    }
+
+    // TODO: Convert to MST
+    public String convertUnixShort(long unixTime) {
+        Instant instant = Instant.ofEpochSecond(unixTime);
+        DateTimeFormatter formatter = DateTimeFormatter
+        .ofPattern("HH:mm").withZone(ZoneOffset.UTC);
+
+        return formatter.format(instant);
     }
 
 
@@ -481,7 +507,7 @@ public class WeatherScanner {
                     state = scnr.next().trim();
                     System.out.print("\nCountry Code: ");
                     scnr.nextLine();
-                    country = scnr.nextLine().toString();
+                    country = scnr.nextLine().toString().trim();
                     
                     weatherScanner.setLocation(city, state, country);
                     apiResponseGeo = weatherScanner.jsonDeserialGeo(
@@ -507,7 +533,7 @@ public class WeatherScanner {
                     break;
                 
                 default:
-                    System.err.println("***Failed To Find Command... Please Try Again.");
+                    System.err.println("\n***Failed To Find Command... Please Try Again.\n");
                     break;
 
             }
